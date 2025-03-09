@@ -134,6 +134,7 @@ public class PotionFilterMod implements
                     bannedPotions.clear();
                     warningLabel.text = "";
                     warningLabel.update();
+                    applyChanges();
                 }));
 
         settingsPanel.addUIElement(new ModLabeledButton(uiStrings.TEXT[0], 1660, 225, settingsPanel,
