@@ -21,10 +21,7 @@ import static potionfilter.PotionFilterMod.*;
 
 public class PotionButton implements IUIElement {
     public AbstractPotion potion;
-    private final int x;
-    private final int y;
-    private final int w;
-    private final int h;
+    private int y;
     private final Hitbox hitbox;
     public boolean disabled;
     private static final Texture x_texture;
@@ -37,11 +34,8 @@ public class PotionButton implements IUIElement {
 
     public PotionButton(AbstractPotion potion, int x, int y, int width, int height) {
         this.potion = potion;
-        this.x = x;
         this.y = y;
-        this.w = width;
-        this.h = height;
-        this.hitbox = new Hitbox(this.x, this.y, this.w, this.h);
+        this.hitbox = new Hitbox(x, this.y, width, height);
     }
 
     @Override
@@ -98,4 +92,17 @@ public class PotionButton implements IUIElement {
     public int updateOrder() {
         return 1;
     }
+
+    public void scrollY(float dY) {
+        this.potion.posY += dY;
+        this.y += (int) dY;
+        this.hitbox.y += dY;
+    }
+
+    @Override
+    public float getY() {
+        return y;
+    }
+
+
 }

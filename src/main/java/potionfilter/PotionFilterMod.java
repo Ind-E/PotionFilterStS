@@ -2,12 +2,12 @@ package potionfilter;
 
 import basemod.*;
 import basemod.interfaces.EditStringsSubscriber;
-import basemod.interfaces.PostInitializeSubscriber;
 import com.badlogic.gdx.Files;
 import com.badlogic.gdx.backends.lwjgl.LwjglFileHandle;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.evacipated.cardcrawl.modthespire.Loader;
 import com.evacipated.cardcrawl.modthespire.ModInfo;
@@ -17,6 +17,7 @@ import com.evacipated.cardcrawl.modthespire.lib.SpireInitializer;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.helpers.PotionHelper;
+import com.megacrit.cardcrawl.helpers.input.InputHelper;
 import com.megacrit.cardcrawl.localization.UIStrings;
 import com.megacrit.cardcrawl.potions.AbstractPotion;
 import org.apache.logging.log4j.LogManager;
@@ -32,7 +33,6 @@ import java.util.*;
 
 @SpireInitializer
 public class PotionFilterMod implements
-        PostInitializeSubscriber,
         EditStringsSubscriber {
     public static ModInfo info;
     public static String modID;
@@ -46,8 +46,8 @@ public class PotionFilterMod implements
     public static ModPanel settingsPanel;
     public static ModLabel warningLabel;
     public static SpireConfig modConfig;
-    private static UIStrings uiStrings;
     private static final String configKey = "FilteredPotions";
+    private static int potionRows;
 
     public static String makeID(String id) {
         return modID + ":" + id;
@@ -66,9 +66,7 @@ public class PotionFilterMod implements
         if (!modConfig.has(configKey)) {
             return;
         }
-        for (String id : modConfig.getString(configKey).split(",")) {
-            bannedPotions.add(id);
-        }
+        Collections.addAll(bannedPotions, modConfig.getString(configKey).split(","));
 
     }
 
@@ -78,10 +76,8 @@ public class PotionFilterMod implements
 
     }
 
-    @Override
-    public void receivePostInitialize() {
-
-        uiStrings = CardCrawlGame.languagePack.getUIString(makeID("Buttons"));
+    public static void receivePostPostInitialize() {
+        UIStrings uiStrings = CardCrawlGame.languagePack.getUIString(makeID("Buttons"));
 
         Texture badgeTexture = TextureLoader.getTexture(imagePath("badge.png"));
 
@@ -98,6 +94,7 @@ public class PotionFilterMod implements
         ArrayList<String> allPotions = PotionHelper.getPotions(null, true);
         FilterPotionsPatch.shouldReturnAll = false;
 
+        potionRows = 0;
         for (String pot : allPotions) {
             AbstractPotion p = PotionHelper.getPotion(pot);
             p.posX = x + potionSize / 2;
@@ -113,6 +110,7 @@ public class PotionFilterMod implements
             if (x + potionSize >= rightEdge) {
                 x = startX;
                 y -= potionSize + margin;
+                potionRows++;
             }
         }
 
@@ -120,6 +118,7 @@ public class PotionFilterMod implements
             for (String id : bannedPotions) {
                 if (b.potion.ID.equals(id)) {
                     b.disabled = true;
+                    break;
                 }
             }
             settingsPanel.addUIElement(b);
@@ -144,10 +143,55 @@ public class PotionFilterMod implements
         warningLabel = new ModLabel("", 500, 70, Color.RED.cpy(), settingsPanel, a -> {});
         settingsPanel.addUIElement(warningLabel);
 
+        settingsPanel.addUIElement(new ScrollHack());
+
 
         BaseMod.registerModBadge(badgeTexture, info.Name, GeneralUtils.arrToString(info.Authors), info.Description, settingsPanel);
+    }
 
-//        registerConsoleCommands();
+    public static class ScrollHack implements IUIElement {
+        static final int maxScrollY = (int) (Settings.HEIGHT * 0.694) - (int) (Settings.scale * 64F);
+        static int scrollY = maxScrollY;
+
+        @Override
+        public void render(SpriteBatch spriteBatch) {
+        }
+
+        @Override
+        public void update() {
+
+            float dY;
+            if (InputHelper.scrolledDown) {
+                dY = Settings.SCROLL_SPEED;
+                if (scrollY + dY > maxScrollY + potionRows * 64F) {
+                    return;
+                }
+
+            } else if (InputHelper.scrolledUp) {
+                dY = -Settings.SCROLL_SPEED;
+                if (scrollY + dY < maxScrollY) {
+                    return;
+                }
+            } else {
+                return;
+            }
+            for (IUIElement e : settingsPanel.getUIElements()) {
+                if (e instanceof PotionButton) {
+                    ((PotionButton) e).scrollY(dY);
+                }
+            }
+            scrollY += (int) dY;
+        }
+
+        @Override
+        public int renderLayer() {
+            return 0;
+        }
+
+        @Override
+        public int updateOrder() {
+            return 0;
+        }
     }
 
     public static void applyChanges() {
