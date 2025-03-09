@@ -1,0 +1,14 @@
+{
+  "${modID}:Warnings":{
+    "TEXT": [
+      "changes not applied",
+      "at least one potion of each rarity is required"
+    ]
+  },
+  "${modID}:Buttons":{
+    "TEXT": [
+      "apply",
+      "reset"
+    ]
+  }
+}
