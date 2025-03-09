@@ -141,7 +141,7 @@ public class PotionFilterMod implements
                 click -> applyChanges()));
 
 
-        warningLabel = new ModLabel("", Settings.WIDTH * 0.2F, Settings.HEIGHT * 0.1F, Color.RED.cpy(), settingsPanel, a -> {});
+        warningLabel = new ModLabel("", 500, 70, Color.RED.cpy(), settingsPanel, a -> {});
         settingsPanel.addUIElement(warningLabel);
 
 
@@ -151,7 +151,6 @@ public class PotionFilterMod implements
     }
 
     public static void applyChanges() {
-        System.out.println("\n\n" + bannedPotions.toString() + "\n\n");
         for (IUIElement e : settingsPanel.getUIElements()) {
             if (e instanceof PotionButton) {
                 if (((PotionButton) e).disabled) {
