@@ -48,6 +48,9 @@ public class PotionFilterMod implements
     public static SpireConfig modConfig;
     private static final String configKey = "FilteredPotions";
     private static int potionRows;
+    private static float potionSize;
+    private static float potionMargin = 10F;
+
 
     public static String makeID(String id) {
         return modID + ":" + id;
@@ -84,11 +87,10 @@ public class PotionFilterMod implements
         settingsPanel = new ModPanel();
 
         potionGrid = new ArrayList<>();
-        int potionSize = (int) (Settings.scale * 64F);
-        int startX = (int) (Settings.WIDTH * 0.185), x = startX;
-        int startY = (int) (Settings.HEIGHT * 0.694) - potionSize, y = startY;
-        int rightEdge = (int) (1550 * Settings.xScale);
-        int margin = 10;
+        potionSize = Settings.scale * 64F;
+        float startX = Settings.WIDTH * 0.185F, x = startX;
+        float startY = Settings.OPTION_Y + (280F * Settings.scale) - potionSize, y = startY;
+        float rightEdge = 1550F * Settings.xScale;
 
         FilterPotionsPatch.shouldReturnAll = true;
         ArrayList<String> allPotions = PotionHelper.getPotions(null, true);
@@ -103,13 +105,12 @@ public class PotionFilterMod implements
                     p,
                     x,
                     y - (int) (6 * Settings.scale),
-                    potionSize,
                     potionSize
             ));
-            x += potionSize + margin;
+            x += potionSize + potionMargin;
             if (x + potionSize >= rightEdge) {
                 x = startX;
-                y -= potionSize + margin;
+                y -= potionSize + potionMargin;
                 potionRows++;
             }
         }
@@ -140,7 +141,6 @@ public class PotionFilterMod implements
         settingsPanel.addUIElement(new ModLabeledButton(uiStrings.TEXT[0], 1660, 225, settingsPanel,
                 click -> applyChanges()));
 
-
         warningLabel = new ModLabel("", 500, 70, Color.RED.cpy(), settingsPanel, a -> {});
         settingsPanel.addUIElement(warningLabel);
 
@@ -151,8 +151,9 @@ public class PotionFilterMod implements
     }
 
     public static class ScrollHack implements IUIElement {
-        static final int maxScrollY = (int) (Settings.HEIGHT * 0.694) - (int) (Settings.scale * 64F);
-        static int scrollY = maxScrollY;
+        static final float minScrollY = Settings.OPTION_Y + (280F * Settings.scale) + potionSize;
+        static final float maxScrollY = minScrollY + Math.max(0, potionRows - 6) * (potionSize + potionMargin);
+        static float scrollY = minScrollY;
 
         @Override
         public void render(SpriteBatch spriteBatch) {
@@ -163,14 +164,14 @@ public class PotionFilterMod implements
 
             float dY;
             if (InputHelper.scrolledDown) {
-                dY = Settings.SCROLL_SPEED;
-                if (scrollY + dY > maxScrollY + potionRows * 64F) {
+                dY = potionSize + potionMargin;
+                if (scrollY + dY > maxScrollY) {
                     return;
                 }
 
             } else if (InputHelper.scrolledUp) {
-                dY = -Settings.SCROLL_SPEED;
-                if (scrollY + dY < maxScrollY) {
+                dY = -(potionSize + potionMargin);
+                if (scrollY <= minScrollY) {
                     return;
                 }
             } else {
@@ -181,7 +182,7 @@ public class PotionFilterMod implements
                     ((PotionButton) e).scrollY(dY);
                 }
             }
-            scrollY += (int) dY;
+            scrollY += dY;
         }
 
         @Override
@@ -216,10 +217,6 @@ public class PotionFilterMod implements
             e.printStackTrace();
         }
     }
-
-//    private void registerConsoleCommands() {
-//        ConsoleCommand.addCommand("potionfilter", CampfireDeck.class);
-//    }
 
     /*----------Localization----------*/
 
