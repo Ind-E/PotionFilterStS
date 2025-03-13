@@ -54,27 +54,8 @@ public class PotionButton implements IUIElement {
         if (hitbox.hovered) {
             if (InputHelper.justClickedLeft) {
                 CardCrawlGame.sound.play("UI_CLICK_1");
-                if (!disabled) {
-                    HashMap<AbstractPotion.PotionRarity, Integer> enough = new HashMap<>();
-                    for (IUIElement e : settingsPanel.getUIElements()) {
-
-                        if (!(e instanceof PotionButton && !((PotionButton) e).disabled)) {
-                            continue;
-                        }
-                        if (ReflectionHacks.getPrivate(((PotionButton) e).potion, AbstractPotion.class, "labOutlineColor") != Settings.HALF_TRANSPARENT_BLACK_COLOR) {
-                            continue;
-                        }
-                        enough.compute(((PotionButton) e).potion.rarity, (key, value) -> (value == null) ? 1 : value + 1);
-                    }
-                    if (enough.get(potion.rarity) <= 1 && ReflectionHacks.getPrivate(potion, AbstractPotion.class, "labOutlineColor") == Settings.HALF_TRANSPARENT_BLACK_COLOR) {
-                        warningLabel.text = uiStrings.TEXT[1];
-                        warningLabel.update();
-                        return;
-                    }
-                }
                 disabled = !disabled;
-                warningLabel.text = uiStrings.TEXT[0];
-                warningLabel.update();
+                changesNotAppliedLabel.text = uiStrings.TEXT[0];
             }
             TipHelper.queuePowerTips(15.0F * Settings.xScale, 860.0F * Settings.yScale, potion.tips);
             potion.scale = 1.5F * Settings.scale;

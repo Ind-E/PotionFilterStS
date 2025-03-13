@@ -1,14 +1,15 @@
 {
   "${modID}:Warnings":{
     "TEXT": [
-      "changes not applied",
-      "at least one potion of each rarity is required"
+      "Changes not applied",
+      "The game may crash or freeze if at least one potion of each rarity is not available."
     ]
   },
   "${modID}:Buttons":{
     "TEXT": [
-      "apply",
-      "reset"
+      "Apply",
+      "Reset",
+      "Invert"
     ]
   }
 }

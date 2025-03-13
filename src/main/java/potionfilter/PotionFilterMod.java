@@ -20,6 +20,7 @@ import com.megacrit.cardcrawl.helpers.PotionHelper;
 import com.megacrit.cardcrawl.helpers.input.InputHelper;
 import com.megacrit.cardcrawl.localization.UIStrings;
 import com.megacrit.cardcrawl.potions.AbstractPotion;
+import com.megacrit.cardcrawl.potions.AbstractPotion.PotionRarity;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.scannotation.AnnotationDB;
@@ -44,12 +45,14 @@ public class PotionFilterMod implements
     public static HashSet<String> bannedPotions;
     public static ArrayList<PotionButton> potionGrid;
     public static ModPanel settingsPanel;
-    public static ModLabel warningLabel;
+    public static ModLabel warningLabel, changesNotAppliedLabel;
     public static SpireConfig modConfig;
     private static final String configKey = "FilteredPotions";
     private static int potionRows;
     private static float potionSize;
     private static float potionMargin = 10F;
+    private static UIStrings warningStrings;
+    private static UIStrings buttonStrings;
 
 
     public static String makeID(String id) {
@@ -80,7 +83,8 @@ public class PotionFilterMod implements
     }
 
     public static void receivePostPostInitialize() {
-        UIStrings uiStrings = CardCrawlGame.languagePack.getUIString(makeID("Buttons"));
+        buttonStrings = CardCrawlGame.languagePack.getUIString(makeID("Buttons"));
+        warningStrings = CardCrawlGame.languagePack.getUIString(makeID("Warnings"));
 
         Texture badgeTexture = TextureLoader.getTexture(imagePath("badge.png"));
 
@@ -96,9 +100,23 @@ public class PotionFilterMod implements
         ArrayList<String> allPotions = PotionHelper.getPotions(null, true);
         FilterPotionsPatch.shouldReturnAll = false;
 
+        Map<PotionRarity, Integer> potionOrder = new HashMap<>();
+        potionOrder.put(PotionRarity.COMMON, 0);
+        potionOrder.put(PotionRarity.UNCOMMON, 1);
+        potionOrder.put(PotionRarity.RARE, 2);
+        potionOrder.put(PotionRarity.PLACEHOLDER, 3);
+
+        allPotions.sort(Comparator.comparingInt(id -> potionOrder.getOrDefault(PotionHelper.getPotion(id).rarity, Integer.MAX_VALUE)));
+
         potionRows = 0;
+        AbstractPotion prevPotion = null;
         for (String pot : allPotions) {
             AbstractPotion p = PotionHelper.getPotion(pot);
+            if (prevPotion != null && p.rarity != prevPotion.rarity) {
+                x = startX;
+                y -= potionSize + potionMargin;
+                potionRows++;
+            }
             p.posX = x + potionSize / 2;
             p.posY = y + potionSize / 2;
             potionGrid.add(new PotionButton(
@@ -113,6 +131,7 @@ public class PotionFilterMod implements
                 y -= potionSize + potionMargin;
                 potionRows++;
             }
+            prevPotion = p;
         }
 
         for (PotionButton b : potionGrid) {
@@ -125,24 +144,37 @@ public class PotionFilterMod implements
             settingsPanel.addUIElement(b);
         }
 
-        settingsPanel.addUIElement(new ModLabeledButton(uiStrings.TEXT[1], 1660, 150, settingsPanel,
+        // reset
+        settingsPanel.addUIElement(new ModLabeledButton(buttonStrings.TEXT[1], 1660, 225, settingsPanel,
                 click -> {
                     for (IUIElement e : settingsPanel.getUIElements()) {
                         if (e instanceof PotionButton) {
                             ((PotionButton) e).disabled = false;
                         }
                     }
-                    bannedPotions.clear();
-                    warningLabel.text = "";
-                    warningLabel.update();
                     applyChanges();
                 }));
 
-        settingsPanel.addUIElement(new ModLabeledButton(uiStrings.TEXT[0], 1660, 225, settingsPanel,
+        // invert
+        settingsPanel.addUIElement(new ModLabeledButton(buttonStrings.TEXT[2], 1660, 300, settingsPanel,
+                click -> {
+                    for (IUIElement e : settingsPanel.getUIElements()) {
+                        if (e instanceof PotionButton) {
+                            ((PotionButton) e).disabled = !((PotionButton) e).disabled ;
+                        }
+                    }
+                    applyChanges();
+                }));
+
+        // apply
+        settingsPanel.addUIElement(new ModLabeledButton(buttonStrings.TEXT[0], 1660, 150, settingsPanel,
                 click -> applyChanges()));
 
-        warningLabel = new ModLabel("", 500, 70, Color.RED.cpy(), settingsPanel, a -> {});
+        warningLabel = new ModLabel("", 450, 70, Color.RED.cpy(), settingsPanel, a -> {});
         settingsPanel.addUIElement(warningLabel);
+
+        changesNotAppliedLabel = new ModLabel("", 450, 30, Color.RED.cpy(), settingsPanel, a -> {});
+        settingsPanel.addUIElement(changesNotAppliedLabel);
 
         settingsPanel.addUIElement(new ScrollHack());
 
@@ -197,6 +229,28 @@ public class PotionFilterMod implements
     }
 
     public static void applyChanges() {
+        HashMap<PotionRarity, Integer> enough = new HashMap<>();
+        for (IUIElement e : settingsPanel.getUIElements()) {
+
+            if (!(e instanceof PotionButton && !((PotionButton) e).disabled)) {
+                continue;
+            }
+            enough.compute(((PotionButton) e).potion.rarity, (key, value) -> (value == null) ? 1 : value + 1);
+        }
+        for (PotionRarity rarity : PotionRarity.values()) {
+            if (rarity == PotionRarity.PLACEHOLDER) {
+                continue;
+            }
+            if (enough.getOrDefault(rarity, 0) < 1) {
+                warningLabel.text = warningStrings.TEXT[1];
+                changesNotAppliedLabel.text = warningStrings.TEXT[0];
+                return;
+            }
+        }
+
+        warningLabel.text = "";
+        changesNotAppliedLabel.text = "";
+
         for (IUIElement e : settingsPanel.getUIElements()) {
             if (e instanceof PotionButton) {
                 if (((PotionButton) e).disabled) {
@@ -206,8 +260,6 @@ public class PotionFilterMod implements
                 }
             }
         }
-        warningLabel.text = "";
-        warningLabel.update();
 
         String configString = String.join(",", bannedPotions);
         modConfig.setString(configKey, configString);
